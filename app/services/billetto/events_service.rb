@@ -36,7 +36,7 @@ module Billetto
 
     def build_request(url)
       request = Net::HTTP::Get.new(url)
-      request["accept"] = 'application/json'
+      request["accept"] = "application/json"
       request["Api-Keypair"] = api_keypair
       request
     end
