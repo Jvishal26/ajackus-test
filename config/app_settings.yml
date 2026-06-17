@@ -1,0 +1,18 @@
+default: &default
+  app_name: "My Awesome App"
+  pagination_limit: 20
+  billetto:
+    client_id: <%= ENV.fetch("BILLETTO_CLIENT_ID") { "your_client_id" } %>
+    client_secret: <%= ENV.fetch("BILLETTO_CLIENT_SECRET") { "your_client_secret" } %>
+    events_endpoint: "https://billetto.dk/api/v3/organiser/events"
+
+development:
+  <<: *default
+  pagination_limit: 10
+
+test:
+  <<: *default
+  pagination_limit: 5
+
+production:
+  <<: *default
