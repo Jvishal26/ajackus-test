@@ -10,6 +10,11 @@ Rails.application.routes.draw do
 
   root "events#index"
 
+  if Rails.env.test?
+    post  "test/sign-in", to: "test/sessions#create",  as: :test_sign_in
+    delete "test/sign-out", to: "test/sessions#destroy", as: :test_sign_out
+  end
+
   require "sidekiq/web"
   mount Sidekiq::Web => "/sidekiq"
 end

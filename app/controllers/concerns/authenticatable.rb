@@ -11,6 +11,9 @@ module Authenticatable
 
   def current_user
     @current_user ||= clerk_proxy&.user
+  rescue => e
+    Rails.logger.warn("Could not fetch Clerk user: #{e.message}")
+    nil
   end
 
   def user_signed_in?

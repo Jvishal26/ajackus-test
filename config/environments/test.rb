@@ -5,7 +5,11 @@
 
 ENV["CLERK_SKIP_RAILTIE"] = "true"
 
+require Rails.root.join("lib/clerk_test_middleware")
+
 Rails.application.configure do
+  config.middleware.use ClerkTestMiddleware
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # While tests run files are not watched, reloading is not necessary.
