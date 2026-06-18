@@ -1,16 +1,35 @@
 require 'rails_helper'
 
 RSpec.describe "Events", type: :request do
+  def stub_clerk_proxy(user_id: nil)
+    proxy = instance_double(Clerk::Proxy, user?: user_id.present?, user_id: user_id, user: nil)
+    allow_any_instance_of(ApplicationController).to receive(:clerk_proxy).and_return(proxy)
+  end
+
   describe "GET /events" do
-    it "returns http success" do
-      get events_path
-      expect(response).to have_http_status(:success)
+    context "when not signed in" do
+      it "returns http success and shows auth buttons" do
+        get events_path
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include("Sign in")
+        expect(response.body).to include("Sign up")
+      end
+
+      it "does not show event listings" do
+        create(:event, billetto_id: "show1", title: "Tech Meetup Copenhagen")
+        get events_path
+        expect(response.body).not_to include("Tech Meetup Copenhagen")
+      end
     end
 
-    it "shows events" do
-      create(:event, billetto_id: "show1", title: "Tech Meetup Copenhagen")
-      get events_path
-      expect(response.body).to include("Tech Meetup Copenhagen")
+    context "when signed in" do
+      before { stub_clerk_proxy(user_id: "user_abc") }
+
+      it "shows events" do
+        create(:event, billetto_id: "show1", title: "Tech Meetup Copenhagen")
+        get events_path
+        expect(response.body).to include("Tech Meetup Copenhagen")
+      end
     end
   end
 end
