@@ -1,6 +1,5 @@
 class ApplicationSubscriptions
   def handlers
-    {}
-      .merge(Voting.subscriptions)
+    Voting.subscriptions
   end
 end

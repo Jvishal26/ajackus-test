@@ -1,12 +1,10 @@
 class VotesController < ApplicationController
-  before_action :require_authentication
-
   def create
-    command_class = vote_kind == "up" ? Voting::UpvoteEvent : Voting::DownvoteEvent
+    command_class = params[:kind] == "down" ? Voting::DownvoteEvent : Voting::UpvoteEvent
 
     command = command_class.new(
       billetto_event_id: params[:event_id],
-      user_id: current_user_id
+      user_id: session_user_id
     )
 
     Rails.configuration.command_bus.call(command)
@@ -21,7 +19,7 @@ class VotesController < ApplicationController
 
   private
 
-  def vote_kind
-    params.fetch(:kind, "up")
+  def session_user_id
+    session[:user_id] ||= SecureRandom.uuid
   end
 end

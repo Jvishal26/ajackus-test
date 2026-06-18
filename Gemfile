@@ -46,8 +46,6 @@ gem "image_processing", "~> 1.2"
 
 gem "faraday"
 gem "rails_event_store"
-gem "clerk-sdk-ruby", require: "clerk"
-gem "kaminari"
 
 gem "dotenv-rails"
 

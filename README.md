@@ -1,14 +1,14 @@
 # Billetto Rails Test
 
-A Rails application that fetches events from the Billetto API, displays them, and lets authenticated users vote on them using Rails Event Store.
+A Rails application that fetches events from the Billetto API, displays them with pagination, and lets users vote on them using Rails Event Store.
 
 ## Setup
 
-**Requirements:** Ruby 4.0.3, PostgreSQL, Redis
+**Requirements:** Ruby 3.x(installed 4), PostgreSQL, Redis
 
 ```bash
 cp .env.example .env
-# Fill in BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY
+# Fill in BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET
 
 bundle install
 rails db:create db:migrate
@@ -33,31 +33,39 @@ rails runner "SyncBillettoEventsJob.perform_now"
 bundle exec rspec
 ```
 
-## Architecture
+## What's done
 
 ### Billetto API Integration
 
-`Billetto::EventsService` fetches public events via the Billetto API (paginated). Events are upserted into the `events` table via `Billetto::EventMapper`. The sync runs as a Sidekiq background job.
+`Billetto::EventsService` fetches public events via the Billetto API (paginated). Events are upserted into the `events` table via `Billetto::EventMapper`. The sync runs as a Sidekiq background job (`SyncBillettoEventsJob`) on a cron schedule.
+
+### Event listing with pagination
+
+The index page displays all events ordered by start date, 20 per page (Kaminari). Each event shows title, date, location, description snippet, image, and a link to Billetto.
 
 ### Voting — Event-Driven with Rails Event Store
 
 Voting is implemented using a domain module (`app/domain/voting/`) following an event-driven pattern:
 
-- **Commands** (`UpvoteEvent`, `DownvoteEvent`) are self-executing and validate that a user hasn't already voted on an event before publishing a domain fact to the event store.
+- **Commands** (`UpvoteEvent`, `DownvoteEvent`) are self-executing and enforce idempotency by reading the event stream before publishing — a user can only vote once per event.
 - **Domain facts** (`EventUpvoted`, `EventDownvoted`) are published to a per-event stream (`Voting$<billetto_event_id>`) and linked to a per-user stream (`VotingByUser$<user_id>`).
-- **Read model** (`Voting::ReadModels::VoteCounts`) subscribes to these facts synchronously and maintains a `vote_counts` table for fast display. In production this should be moved to an async Sidekiq worker.
+- **Read model** (`Voting::ReadModels::VoteCounts`) subscribes to these facts synchronously and maintains a `vote_counts` table for fast display.
+- Votes are tracked by session (`session[:user_id]`), so a browser session counts as a single voter.
 
 All commands go through `CommandBus` which wraps execution in a database transaction.
 
-### Authentication
+### Tests
 
-User authentication is handled by [Clerk](https://clerk.com/). The `Authenticatable` concern extracts and verifies the Clerk session token (`__session` cookie or `Authorization` header). Only authenticated users can submit votes.
+Request specs cover the events listing, pagination, and the vote submission flow. Run with `bundle exec rspec`.
 
-For local development without a Clerk account, voting buttons will show "Sign in to vote" but the rest of the app works fine.
+## Pending
+
+### Clerk Authentication
+
+Clerk.com authentication has not been integrated yet. The assignment requires sign-up/sign-in via Clerk SDK with voting restricted to authenticated users. This is the remaining task.
 
 ## Design Notes
 
-- Chose PostgreSQL over MySQL (better JSON support, row locking for the read model counter).
 - Vote idempotency is enforced in the command layer by reading the event stream before publishing — not at the DB level. This keeps the write path clean and avoids a separate `votes` table.
 - The read model `vote_counts` table exists purely for query performance. It can be rebuilt at any time from the event store.
 - Frontend is minimal by design — the focus was on backend architecture per the brief.
