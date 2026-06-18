@@ -1,66 +1,135 @@
-<% if notice.present? %>
-  <p style="color: green;"><%= notice %></p>
-<% end %>
-<% if alert.present? %>
-  <p style="color: red;"><%= alert %></p>
-<% end %>
-
 <% unless user_signed_in? %>
-  <div style="text-align: center; padding: 4em 1em;">
-    <h1>Billetto Events</h1>
-    <p style="color: #555; margin-bottom: 2em;">Sign in to browse and vote on events</p>
-    <%= link_to "Sign in", sign_in_path, style: "margin-right: 1em; padding: 0.6em 1.4em; background: #000; color: #fff; text-decoration: none;" %>
-    <%= link_to "Sign up", sign_up_path, style: "padding: 0.6em 1.4em; border: 1px solid #000; text-decoration: none;" %>
+  <style>
+    .landing { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 5rem 1rem 4rem; }
+    .landing h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 0.75rem; }
+    .landing p  { font-size: 1.05rem; color: #555; max-width: 420px; margin-bottom: 2.5rem; line-height: 1.6; }
+    .landing-actions { display: flex; gap: 0.75rem; }
+  </style>
+
+  <div class="landing">
+    <h1>Discover events<br>near you</h1>
+    <p>Browse thousands of events on Billetto. Sign in to explore and vote on what interests you.</p>
+    <div class="landing-actions">
+      <%= link_to "Sign in", sign_in_path, class: "btn btn-outline" %>
+      <%= link_to "Get started", sign_up_path, class: "btn btn-primary" %>
+    </div>
   </div>
+
 <% else %>
-  <h1>Events</h1>
+  <style>
+    .events-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    .events-header h1 { font-size: 1.4rem; font-weight: 600; }
+    .events-header .count { font-size: 0.85rem; color: #888; }
+
+    .event-card {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .event-card:hover { border-color: #ccc; }
+    .event-thumb { width: 120px; min-width: 120px; height: 80px; object-fit: cover; border-radius: 5px; background: #f3f3f3; }
+    .event-body { flex: 1; }
+    .event-title { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; }
+    .event-meta { font-size: 0.82rem; color: #666; margin-bottom: 0.5rem; line-height: 1.5; }
+    .event-description { font-size: 0.87rem; color: #444; line-height: 1.5; margin-bottom: 0.6rem; }
+    .event-footer { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .vote-count { font-size: 0.82rem; color: #666; }
+    .vote-btn { font-size: 0.82rem; padding: 0.25rem 0.65rem; cursor: pointer; border: 1px solid #ddd; border-radius: 4px; background: #fff; }
+    .vote-btn:hover { background: #f5f5f5; }
+    .event-link { font-size: 0.82rem; color: #555; margin-left: auto; }
+
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e5e5; }
+    .pagination a, .pagination span { display: inline-block; padding: 0.4rem 0.75rem; border-radius: 5px; font-size: 0.875rem; border: 1px solid #e5e5e5; background: #fff; color: #111; }
+    .pagination a:hover { background: #f5f5f5; text-decoration: none; }
+    .pagination .current { background: #111; color: #fff; border-color: #111; }
+    .pagination .disabled { color: #ccc; border-color: #eee; pointer-events: none; }
+    .pagination .gap { border: none; background: none; color: #888; }
+  </style>
+
+  <div class="events-header">
+    <h1>Events</h1>
+    <span class="count"><%= @events.total_count %> events &middot; page <%= @events.current_page %> of <%= @events.total_pages %></span>
+  </div>
 
   <% if @events.empty? %>
-    <p>No events found.</p>
+    <p style="color: #888; text-align: center; padding: 3rem 0;">No events found.</p>
   <% else %>
     <% @events.each do |event| %>
       <% vote_count = @vote_counts[event.billetto_id] %>
-      <div style="border: 1px solid #ccc; margin-bottom: 1.5em; padding: 1em;">
+      <div class="event-card">
         <% if event.image_url.present? %>
-          <img src="<%= event.image_url %>" alt="<%= event.title %>" style="max-width: 180px; float: right; margin-left: 1em;" />
+          <img class="event-thumb" src="<%= event.image_url %>" alt="<%= event.title %>" />
+        <% else %>
+          <div class="event-thumb"></div>
         <% end %>
 
-        <h2><%= event.title %></h2>
+        <div class="event-body">
+          <div class="event-title"><%= event.title %></div>
 
-        <p>
-          <strong>When:</strong>
-          <%= event.starts_at&.strftime("%d %b %Y, %H:%M") %>
-          <% if event.ends_at.present? %>
-            &ndash; <%= event.ends_at.strftime("%H:%M") %>
+          <div class="event-meta">
+            <% if event.starts_at.present? %>
+              📅 <%= event.starts_at.strftime("%d %b %Y, %H:%M") %>
+              <% if event.ends_at.present? %>&ndash;<%= event.ends_at.strftime("%H:%M") %><% end %>
+            <% end %>
+            <% if event.city.present? %>
+              &nbsp;&middot;&nbsp; 📍 <%= [event.location_name, event.city].compact.join(", ") %>
+            <% end %>
+          </div>
+
+          <% if event.description.present? %>
+            <div class="event-description"><%= truncate(event.description, length: 160) %></div>
           <% end %>
-        </p>
 
-        <% if event.location_name.present? || event.city.present? %>
-          <p>
-            <strong>Where:</strong>
-            <%= [event.location_name, event.city, event.country].compact.join(", ") %>
-          </p>
-        <% end %>
-
-        <% if event.description.present? %>
-          <p><%= truncate(event.description, length: 200) %></p>
-        <% end %>
-
-        <% if event.url.present? %>
-          <p><a href="<%= event.url %>" target="_blank" rel="noopener">View on Billetto &rarr;</a></p>
-        <% end %>
-
-        <div style="margin-top: 0.75em;">
-          <strong>Votes:</strong>
-          &uarr; <%= vote_count&.upvotes || 0 %>
-          &darr; <%= vote_count&.downvotes || 0 %>
-          &nbsp;
-          <%= button_to "👍 Upvote", votes_path(event_id: event.billetto_id, kind: "up"), method: :post %>
-          <%= button_to "👎 Downvote", votes_path(event_id: event.billetto_id, kind: "down"), method: :post %>
+          <div class="event-footer">
+            <span class="vote-count">👍 <%= vote_count&.upvotes || 0 %> &nbsp; 👎 <%= vote_count&.downvotes || 0 %></span>
+            <%= button_to "👍", votes_path(event_id: event.billetto_id, kind: "up"),   method: :post, class: "vote-btn" %>
+            <%= button_to "👎", votes_path(event_id: event.billetto_id, kind: "down"), method: :post, class: "vote-btn" %>
+            <% if event.url.present? %>
+              <a href="<%= event.url %>" target="_blank" rel="noopener" class="event-link">View on Billetto →</a>
+            <% end %>
+          </div>
         </div>
-
-        <div style="clear: both;"></div>
       </div>
     <% end %>
+
+    <div class="pagination">
+      <% if @events.first_page? %>
+        <span class="disabled">&lsaquo; Prev</span>
+      <% else %>
+        <%= link_to "&lsaquo; Prev".html_safe, events_path(page: @events.current_page - 1) %>
+      <% end %>
+
+      <% window_start = [1, @events.current_page - 2].max %>
+      <% window_end   = [window_start + 4, @events.total_pages].min %>
+      <% window_start = [window_end - 4, 1].max %>
+
+      <% if window_start > 1 %>
+        <%= link_to "1", events_path(page: 1) %>
+        <% if window_start > 2 %><span class="gap">&hellip;</span><% end %>
+      <% end %>
+
+      <% (window_start..window_end).each do |n| %>
+        <% if n == @events.current_page %>
+          <span class="current"><%= n %></span>
+        <% else %>
+          <%= link_to n, events_path(page: n) %>
+        <% end %>
+      <% end %>
+
+      <% if window_end < @events.total_pages %>
+        <% if window_end < @events.total_pages - 1 %><span class="gap">&hellip;</span><% end %>
+        <%= link_to @events.total_pages, events_path(page: @events.total_pages) %>
+      <% end %>
+
+      <% if @events.last_page? %>
+        <span class="disabled">Next &rsaquo;</span>
+      <% else %>
+        <%= link_to "Next &rsaquo;".html_safe, events_path(page: @events.current_page + 1) %>
+      <% end %>
+    </div>
   <% end %>
 <% end %>

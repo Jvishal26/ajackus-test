@@ -1,24 +1,36 @@
-<% content_for :title, "Sign in" %>
+<% content_for :title, "Sign in – Billetto" %>
 
-<div style="display: flex; justify-content: center; padding: 3em 1em;">
+<style>
+  .auth-page { display: flex; flex-direction: column; align-items: center; padding-top: 2rem; }
+  .auth-page h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .auth-page p  { color: #666; font-size: 0.9rem; margin-bottom: 2rem; }
+  #clerk-sign-in { min-height: 420px; }
+</style>
+
+<div class="auth-page">
+  <h1>Welcome back</h1>
+  <p>Sign in to your account to browse events</p>
   <div id="clerk-sign-in"></div>
 </div>
 
 <script>
-  window.addEventListener("load", async () => {
-    await Clerk.load({
-      afterSignInUrl: "<%= root_url %>",
-      afterSignUpUrl: "<%= root_url %>",
-    });
-
-    if (Clerk.user) {
-      window.location.href = "<%= root_url %>";
-      return;
+  (function () {
+    function mountSignIn() {
+      Clerk.mountSignIn(document.getElementById("clerk-sign-in"), {
+        routing: "hash",
+        signUpUrl: "<%= sign_up_url %>",
+        afterSignInUrl: "<%= root_url %>",
+      });
     }
 
-    Clerk.mountSignIn(document.getElementById("clerk-sign-in"), {
-      afterSignInUrl: "<%= root_url %>",
-      signUpUrl: "<%= sign_up_url %>",
-    });
-  });
+    if (window.Clerk && window.Clerk.loaded) {
+      if (Clerk.user) { window.location.href = "<%= root_url %>"; return; }
+      mountSignIn();
+    } else {
+      window.addEventListener("clerk:loaded", function () {
+        if (Clerk.user) { window.location.href = "<%= root_url %>"; return; }
+        mountSignIn();
+      });
+    }
+  })();
 </script>

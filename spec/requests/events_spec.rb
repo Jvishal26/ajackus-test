@@ -28,7 +28,20 @@ RSpec.describe "Events", type: :request do
       it "shows events" do
         create(:event, billetto_id: "show1", title: "Tech Meetup Copenhagen")
         get events_path
+        expect(response).to have_http_status(:success)
         expect(response.body).to include("Tech Meetup Copenhagen")
+      end
+
+      it "paginates at 20 per page" do
+        21.times { |i| create(:event) }
+        get events_path(page: 1)
+        expect(response.body).to include("Next")
+      end
+
+      it "shows the second page" do
+        21.times { |i| create(:event) }
+        get events_path(page: 2)
+        expect(response).to have_http_status(:success)
       end
     end
   end
