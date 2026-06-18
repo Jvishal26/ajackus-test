@@ -5,6 +5,8 @@ default: &default
     client_id: <%= ENV.fetch("BILLETTO_CLIENT_ID") { "your_client_id" } %>
     client_secret: <%= ENV.fetch("BILLETTO_CLIENT_SECRET") { "your_client_secret" } %>
     events_endpoint: "https://billetto.dk/api/v3/organiser/events"
+    public_events_endpoint: "https://billetto.dk/api/v3/public/events"
+    pagination_limit: 10
 
 development:
   <<: *default

@@ -24,13 +24,51 @@ module Billetto
       JSON.parse(response.read_body) if response.is_a?(Net::HTTPSuccess)
     end
 
+    def fetch_public_events(params = {limit: AppSettings.billetto.pagination_limit})
+      events = []
+      url = URI(AppSettings.billetto.public_events_endpoint)
+
+      loop do
+        url.query ||= URI.encode_www_form(params) unless params.empty?
+
+        begin 
+          response = build_http(url).request(build_request(url))
+        rescue Socket::ResolutionError,
+                SocketError,
+                Net::OpenTimeout,
+                Net::ReadTimeout,
+                Errno::ECONNREFUSED,
+                Errno::ETIMEDOUT => e
+          Rails.logger.error(
+            "Billetto request failed: #{e.class} - #{e.message}"
+          )
+        end
+        
+        raise Billetto::ApiError, response.body unless response.is_a?(Net::HTTPSuccess)
+
+        data = JSON.parse(response.read_body)
+        events.concat(data["data"])
+        mapped = events.map { |event| EventMapper.call(event) }
+                     .uniq { |e| e[:billetto_id] }
+        Event.upsert_all(mapped, unique_by: :billetto_id)
+        
+        break unless data["has_more"]
+
+        break if data["next_url"] == url.to_s
+
+        url = URI(data["next_url"])
+      end
+      
+      events
+    end
+
     private
 
     def build_http(url)
-      @http ||= Net::HTTP.new(url.host, url.port).tap do |http|
+      Net::HTTP.new(url.host, url.port).tap do |http|
         http.use_ssl = true
-        http.open_timeout = 5
-        http.read_timeout = 10
+        http.open_timeout = 15
+        http.read_timeout = 30
       end
     end
 
