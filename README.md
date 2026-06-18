@@ -7,8 +7,8 @@ A Rails application that fetches events from the Billetto API, displays them wit
 **Requirements:** Ruby 3.x(installed 4), PostgreSQL, Redis
 
 ```bash
-cp .env.example .env
-# Fill in BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET
+touch .env
+# Add BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY
 
 bundle install
 rails db:create db:migrate
@@ -64,8 +64,11 @@ Request specs cover the events listing, pagination, and the vote submission flow
 
 Clerk.com authentication has not been integrated yet. The assignment requires sign-up/sign-in via Clerk SDK with voting restricted to authenticated users. This is the remaining task.
 
-## Design Notes
+### Testing
 
-- Vote idempotency is enforced in the command layer by reading the event stream before publishing — not at the DB level. This keeps the write path clean and avoids a separate `votes` table.
-- The read model `vote_counts` table exists purely for query performance. It can be rebuilt at any time from the event store.
-- Frontend is minimal by design — the focus was on backend architecture per the brief.
+some cases are not covered, negative tests are also pending
+
+### pipeline fix
+
+pipeline fix is also pending
+
