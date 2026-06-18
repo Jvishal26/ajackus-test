@@ -1,0 +1,24 @@
+<% content_for :title, "Sign up" %>
+
+<div style="display: flex; justify-content: center; padding: 3em 1em;">
+  <div id="clerk-sign-up"></div>
+</div>
+
+<script>
+  window.addEventListener("load", async () => {
+    await Clerk.load({
+      afterSignInUrl: "<%= root_url %>",
+      afterSignUpUrl: "<%= root_url %>",
+    });
+
+    if (Clerk.user) {
+      window.location.href = "<%= root_url %>";
+      return;
+    }
+
+    Clerk.mountSignUp(document.getElementById("clerk-sign-up"), {
+      afterSignUpUrl: "<%= root_url %>",
+      signInUrl: "<%= sign_in_url %>",
+    });
+  });
+</script>

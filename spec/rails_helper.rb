@@ -38,7 +38,7 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
 
   config.before(:each, type: :request) do
-    allow_any_instance_of(ApplicationController).to receive(:current_user_id).and_return(nil)
+    allow_any_instance_of(ApplicationController).to receive(:clerk_proxy).and_return(nil)
   end
 
   config.fixture_paths = [

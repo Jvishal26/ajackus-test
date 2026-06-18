@@ -18,12 +18,37 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
 
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+    <% if (js_url = clerk_js_url) %>
+      <script
+        async
+        crossorigin="anonymous"
+        data-clerk-publishable-key="<%= ENV['CLERK_PUBLISHABLE_KEY'] %>"
+        src="<%= js_url %>"
+        type="text/javascript"
+      ></script>
+    <% end %>
   </head>
 
   <body>
-    <%= yield %>
+    <nav style="padding: 0.75em 1em; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+      <%= link_to "Billetto Events", root_path %>
+      <div>
+        <% if user_signed_in? %>
+          <span style="margin-right: 1em; font-size: 0.9em; color: #555;">
+            <%= current_user&.dig("email_addresses", 0, "email_address") || current_user_id %>
+          </span>
+          <%= button_to "Sign out", sign_out_path, method: :delete, style: "cursor: pointer;" %>
+        <% else %>
+          <%= link_to "Sign in", sign_in_path, style: "margin-right: 1em;" %>
+          <%= link_to "Sign up", sign_up_path %>
+        <% end %>
+      </div>
+    </nav>
+
+    <main style="padding: 1em;">
+      <%= yield %>
+    </main>
   </body>
 </html>
