@@ -1,0 +1,11 @@
+<h1>Sign in</h1>
+
+<div id="clerk-sign-in"></div>
+
+<script>
+  window.addEventListener("clerk:loaded", function() {
+    Clerk.mountSignIn(document.getElementById("clerk-sign-in"), {
+      afterSignInUrl: "<%= events_url %>"
+    });
+  });
+</script>

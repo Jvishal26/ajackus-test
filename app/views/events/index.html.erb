@@ -33,8 +33,12 @@
       <p>
         Votes: &uarr; <%= vote_count&.upvotes || 0 %> &darr; <%= vote_count&.downvotes || 0 %>
         &nbsp;
-        <%= button_to "Upvote",   votes_path(event_id: event.billetto_id, kind: "up"),   method: :post %>
-        <%= button_to "Downvote", votes_path(event_id: event.billetto_id, kind: "down"), method: :post %>
+        <% if signed_in? %>
+          <%= button_to "Upvote",   votes_path(event_id: event.billetto_id, kind: "up"),   method: :post %>
+          <%= button_to "Downvote", votes_path(event_id: event.billetto_id, kind: "down"), method: :post %>
+        <% else %>
+          <%= link_to "Sign in to vote", sign_in_path %>
+        <% end %>
       </p>
     </div>
     <hr>

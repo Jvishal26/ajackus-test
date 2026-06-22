@@ -7,11 +7,40 @@
     <%= csp_meta_tag %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+    <% if clerk_js_url.present? %>
+      <script>
+        (function() {
+          var script = document.createElement("script");
+          script.src = "<%= clerk_js_url %>";
+          script.async = true;
+          script.setAttribute("data-clerk-publishable-key", "<%= ENV['CLERK_PUBLISHABLE_KEY'] %>");
+          script.onload = function() {
+            window.Clerk.load().then(function() {
+              window.dispatchEvent(new Event("clerk:loaded"));
+            });
+          };
+          document.head.appendChild(script);
+        })();
+      </script>
+    <% end %>
   </head>
 
   <body>
+    <nav>
+      <%= link_to "Events", root_path %>
+      &nbsp;|&nbsp;
+      <% if signed_in? %>
+        <a href="#" onclick="Clerk.signOut(() => { window.location.href = '<%= root_path %>' }); return false;">Sign out</a>
+      <% else %>
+        <%= link_to "Sign in", sign_in_path %>
+        &nbsp;
+        <%= link_to "Sign up", sign_up_path %>
+      <% end %>
+    </nav>
+
     <% if notice.present? %><p><%= notice %></p><% end %>
     <% if alert.present? %><p><%= alert %></p><% end %>
+
     <%= yield %>
   </body>
 </html>
