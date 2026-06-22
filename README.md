@@ -6,34 +6,37 @@ A Rails application that fetches events from the Billetto API, stores them, disp
 
 **Requirements:** Ruby 4.0.3, PostgreSQL, Redis
 
-`bash
+```bash
 cp .env.example .env
 # Fill in: BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY
 
 bundle install
 rails db:create db:migrate
-`
+```
 
 ## Running
 
-`bash
-rails server
-bundle exec sidekiq
-`
+```bash
+
+$ rails server
+$ bundle exec sidekiq
+```
 
 To sync events from Billetto:
-`bash
-rails console
+```bash
+
+$ rails console
 > SyncBillettoEventsJob.perform_now
-`
+```
 
 The sync also runs automatically every hour via Sidekiq Cron.
 
 ## Tests
 
-`bash
-bundle exec rspec
-`
+```bash
+
+$ bundle exec rspec
+```
 
 ## Architecture
 
