@@ -1,74 +1,83 @@
-# Billetto Rails Test
+﻿# Billetto Rails Test
 
-A Rails application that fetches events from the Billetto API, displays them with pagination, and lets users vote on them using Rails Event Store.
+A Rails application that fetches events from the Billetto API, stores them, displays them with pagination, and allows authenticated users to vote via Rails Event Store.
 
 ## Setup
 
-**Requirements:** Ruby 3.x(installed 4), PostgreSQL, Redis
+**Requirements:** Ruby 4.0.3, PostgreSQL, Redis
 
-```bash
-touch .env
-# Add BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY
+`ash
+cp .env.example .env
+# Fill in: BILLETTO_CLIENT_ID, BILLETTO_CLIENT_SECRET, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY
 
 bundle install
 rails db:create db:migrate
-```
+`
 
 ## Running
 
-```bash
+`ash
 rails server
-bundle exec sidekiq  # background jobs
-```
+bundle exec sidekiq
+`
 
 To sync events from Billetto:
-```bash
+`ash
 rails runner "SyncBillettoEventsJob.perform_now"
-# or let the cron schedule handle it (see config/initializers/sidekiq_cron.rb)
-```
+`
+
+The sync also runs automatically every hour via Sidekiq Cron.
 
 ## Tests
 
-```bash
+`ash
 bundle exec rspec
-```
+`
 
-## What's done
+## Architecture
 
 ### Billetto API Integration
 
-`Billetto::EventsService` fetches public events via the Billetto API (paginated). Events are upserted into the `events` table via `Billetto::EventMapper`. The sync runs as a Sidekiq background job (`SyncBillettoEventsJob`) on a cron schedule.
+Billetto::EventsService (under pp/integrations/billetto/) fetches public events from the Billetto API with pagination and error handling. Events are mapped to the Event model via Billetto::EventMapper and upserted in bulk. The sync runs as a background job via Sidekiq.
 
-### Event listing with pagination
+### Event Display
 
-The index page displays all events ordered by start date, 20 per page (Kaminari). Each event shows title, date, location, description snippet, image, and a link to Billetto.
+Events are listed on the index page with title, date, image, location, and description (truncated). Pagination is handled at 20 events per page using limit/offset.
 
-### Voting — Event-Driven with Rails Event Store
+### Voting with Rails Event Store
 
-Voting is implemented using a domain module (`app/domain/voting/`) following an event-driven pattern:
+Voting is built as a domain module (pp/domain/voting/) following the project's DDD conventions:
 
-- **Commands** (`UpvoteEvent`, `DownvoteEvent`) are self-executing and enforce idempotency by reading the event stream before publishing — a user can only vote once per event.
-- **Domain facts** (`EventUpvoted`, `EventDownvoted`) are published to a per-event stream (`Voting$<billetto_event_id>`) and linked to a per-user stream (`VotingByUser$<user_id>`).
-- **Read model** (`Voting::ReadModels::VoteCounts`) subscribes to these facts synchronously and maintains a `vote_counts` table for fast display.
-- Votes are tracked by session (`session[:user_id]`), so a browser session counts as a single voter.
+- **Facts** (EventUpvoted, EventDownvoted) are published to a per-event stream (Voting$<id>) and linked to a per-user stream (VotingByUser$<user_id>).
+- **Commands** (UpvoteEvent, DownvoteEvent) are self-executing, validate their inputs, and enforce idempotency by reading the event stream before publishing — one vote per user per event.
+- **Read model** (Voting::ReadModels::VoteCounts) subscribes to vote facts and maintains a ote_counts table for fast display. Uses pessimistic locking to handle concurrent votes safely.
 
-All commands go through `CommandBus` which wraps execution in a database transaction.
+All commands go through CommandBus, which wraps execution in a DB transaction.
 
-### Tests
+### Authentication
 
-Request specs cover the events listing, pagination, and the vote submission flow. Run with `bundle exec rspec`.
+User authentication is handled by [Clerk](https://clerk.com/) via clerk-sdk-ruby. The Clerk Rack middleware authenticates each request by reading the __session cookie and sets equest.env["clerk"] with the user's session proxy.
 
-## Pending
+The Authenticatable concern exposes current_user_id and signed_in? to controllers and views. Voting is restricted to authenticated users — unauthenticated requests are redirected to the sign-in page.
 
-### Clerk Authentication
+Sign-up and sign-in pages embed Clerk's JavaScript components (mountSignIn, mountSignUp). Sign-out is handled via Clerk.signOut() on the client.
 
-Clerk.com authentication has not been integrated yet. The assignment requires sign-up/sign-in via Clerk SDK with voting restricted to authenticated users. This is the remaining task.
+Required environment variables:
+- CLERK_SECRET_KEY — for the Rack middleware to verify sessions server-side
+- CLERK_PUBLISHABLE_KEY — for loading the Clerk JS bundle
 
 ### Testing
 
-some cases are not covered, negative tests are also pending
+- **Model specs** — validate Event model constraints and scopes
+- **Domain specs** — test the voting commands, idempotency, stream linking, and vote count read model
+- **Request specs** — cover event listing, pagination, auth-gated voting, and redirect behaviour for unauthenticated users
+- **System specs** — browser-level tests using ack_test driver covering the auth flow (sign-in state, vote buttons, redirects) via a test middleware that injects a fake Clerk session
 
-### pipeline fix
+In test environment, CLERK_SKIP_RAILTIE=true prevents the real Clerk middleware from loading. A ClerkTestMiddleware reads a test-only cookie (_clerk_test_user) to simulate authenticated sessions.
 
-pipeline fix is also pending
+## Design Notes
 
+- Voting idempotency is enforced in the command layer by reading the event stream, not by a DB constraint. This keeps the write side clean and avoids a separate otes table.
+- The ote_counts read model can be rebuilt at any time from the event store.
+- The Billetto integration lives in pp/integrations/billetto/ rather than pp/services/, following the project's convention for third-party ACL modules.
+- Frontend is deliberately minimal — the focus of the assignment is backend architecture.
