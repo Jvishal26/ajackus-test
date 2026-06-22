@@ -3,9 +3,17 @@
 <div id="clerk-sign-in"></div>
 
 <script>
-  window.addEventListener("clerk:loaded", function() {
-    Clerk.mountSignIn(document.getElementById("clerk-sign-in"), {
-      afterSignInUrl: "<%= events_url %>"
-    });
-  });
+  (function() {
+    function mount() {
+      var el = document.getElementById("clerk-sign-in");
+      if (!el) return;
+      window.Clerk.mountSignIn(el, { afterSignInUrl: "<%= events_url %>" });
+    }
+
+    if (window.Clerk) {
+      mount();
+    } else {
+      window.addEventListener("clerk:loaded", mount, { once: true });
+    }
+  })();
 </script>

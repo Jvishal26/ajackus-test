@@ -16,6 +16,7 @@
           script.setAttribute("data-clerk-publishable-key", "<%= ENV['CLERK_PUBLISHABLE_KEY'] %>");
           script.onload = function() {
             window.Clerk.load().then(function() {
+              console.log("[Clerk] loaded, user:", window.Clerk.user ? window.Clerk.user.id : null);
               window.dispatchEvent(new Event("clerk:loaded"));
             });
           };
@@ -25,16 +26,16 @@
     <% end %>
   </head>
 
-  <body>
+  <body data-rails-signed-in="<%= signed_in? %>">
     <nav>
       <%= link_to "Events", root_path %>
       &nbsp;|&nbsp;
       <% if signed_in? %>
-        <a href="#" onclick="Clerk.signOut(() => { window.location.href = '<%= root_path %>' }); return false;">Sign out</a>
+        <a href="#" id="sign-out-link">Sign out</a>
       <% else %>
-        <%= link_to "Sign in", sign_in_path %>
+        <%= link_to "Sign in", sign_in_path, data: { turbo: false } %>
         &nbsp;
-        <%= link_to "Sign up", sign_up_path %>
+        <%= link_to "Sign up", sign_up_path, data: { turbo: false } %>
       <% end %>
     </nav>
 
@@ -42,5 +43,73 @@
     <% if alert.present? %><p><%= alert %></p><% end %>
 
     <%= yield %>
+
+    <script>
+      (function() {
+        var csrfToken = document.querySelector("meta[name='csrf-token']").content;
+
+        var signOutLink = document.getElementById("sign-out-link");
+        if (signOutLink) {
+          signOutLink.addEventListener("click", function(e) {
+            e.preventDefault();
+            function clearRailsSession() {
+              return fetch("<%= sign_out_path %>", {
+                method: "DELETE",
+                headers: { "X-CSRF-Token": csrfToken }
+              });
+            }
+            if (window.Clerk) {
+              Clerk.signOut(function() {
+                clearRailsSession().then(function() { window.location.href = "/"; });
+              });
+            } else {
+              clearRailsSession().then(function() { window.location.href = "/"; });
+            }
+          });
+        }
+
+        var railsSignedIn = document.body.dataset.railsSignedIn === "true";
+        console.log("[Auth] railsSignedIn:", railsSignedIn);
+
+        if (!railsSignedIn) {
+          var exchangeAttempted = false;
+
+          function attemptSessionExchange() {
+            console.log("[Auth] attemptSessionExchange called, Clerk.user:", window.Clerk && Clerk.user ? Clerk.user.id : "none");
+            if (exchangeAttempted || !window.Clerk || !Clerk.user || !Clerk.session) return;
+            exchangeAttempted = true;
+
+            Clerk.session.getToken().then(function(token) {
+              console.log("[Auth] got token:", token ? token.substring(0, 20) + "..." : "null");
+              if (!token) return;
+
+              fetch("<%= auth_session_path %>", {
+                method: "POST",
+                headers: {
+                  "Authorization": "Bearer " + token,
+                  "X-CSRF-Token": csrfToken
+                }
+              }).then(function(res) {
+                console.log("[Auth] session exchange response:", res.status);
+                if (res.ok) window.location.reload();
+              }).catch(function(err) {
+                console.error("[Auth] session exchange error:", err);
+              });
+            }).catch(function(err) {
+              console.error("[Auth] getToken error:", err);
+            });
+          }
+
+          if (window.Clerk && Clerk.user) {
+            attemptSessionExchange();
+          } else {
+            window.addEventListener("clerk:loaded", function() {
+              console.log("[Auth] clerk:loaded fired");
+              attemptSessionExchange();
+            }, { once: true });
+          }
+        }
+      })();
+    </script>
   </body>
 </html>
